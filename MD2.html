@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Swipe Photos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: white;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #container {
+      max-width: 90vw;
+      max-height: 90vh;
+      position: relative;
+    }
+    #photo {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <img id="photo" src="" alt="Chargement...">
+  </div>
+
+  <script>
+    const owner = 'Grenixx';
+    const repo = 'MakeDataset';
+    const folder = 'photos';
+
+    let images = [];
+    let currentIndex = 0;
+
+    async function loadImages() {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}`);
+        if (!res.ok) throw new Error("Erreur d'accès au dossier GitHub");
+
+        const files = await res.json();
+        images = files
+          .filter(f => f.type === 'file' && f.name.match(/\.(jpg|jpeg|png|gif)$/i))
+          .map(f => `https://raw.githubusercontent.com/${owner}/${repo}/main/${folder}/${f.name}`);
+
+        if (images.length === 0) throw new Error("Aucune image trouvée");
+
+        showImage(currentIndex);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function showImage(index) {
+      const img = document.getElementById('photo');
+      img.src = images[index];
+    }
+
+    // Gestion du swipe
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+
+    document.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleGesture();
+    });
+
+    function handleGesture() {
+      if (touchEndX < touchStartX - 50) {
+        // Swipe gauche → suivant
+        currentIndex = (currentIndex + 1) % images.length;
+        showImage(currentIndex);
+      } else if (touchEndX > touchStartX + 50) {
+        // Swipe droite → précédent
+        currentIndex = (currentIndex - 1 + images.length) % images.length;
+        showImage(currentIndex);
+      }
+    }
+
+    loadImages();
+  </script>
+</body>
+</html>
