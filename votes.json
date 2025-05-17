@@ -28,7 +28,10 @@
     }
   },
   "videoframe_5205.png": {
-    "yes": 5,
-    "no": 1
+    "yes": 6,
+    "no": 1,
+    "users": {
+      "xTAnBRH11lSHT1G3HH220tLI1kx2": "yes"
+    }
   }
 }
