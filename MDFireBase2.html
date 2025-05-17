@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vote Photo avec Firebase Auth</title>
+</head>
+<body>
+  <h1>Vote Photo</h1>
+
+  <!-- Connexion / déconnexion -->
+  <button id="login">Se connecter avec Google</button>
+  <button id="logout" style="display:none;">Se déconnecter</button>
+  <div id="user-info"></div>
+
+  <!-- Section de vote -->
+  <div id="vote-section" style="display:none;">
+    <img id="photo" src="" alt="Photo à voter" style="max-width:300px;" />
+    <br />
+    <button onclick="vote('yes')">Oui</button>
+    <button onclick="vote('no')">Non</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // Configuration Firebase (à personnaliser avec vos infos)
+    const firebaseConfig = {
+      apiKey: "VOTRE_API_KEY",
+      authDomain: "VOTRE_AUTH_DOMAIN",
+      projectId: "VOTRE_PROJECT_ID",
+      storageBucket: "VOTRE_STORAGE_BUCKET",
+      messagingSenderId: "VOTRE_MESSAGING_SENDER_ID",
+      appId: "VOTRE_APP_ID"
+    };
+
+    // Initialisation
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Données pour tester
+    const images = ["https://via.placeholder.com/300x200?text=Image1", "https://via.placeholder.com/300x200?text=Image2"];
+    let currentIndex = 0;
+    const votes = {}; // Ex : { "Image1": { uid1: "yes", uid2: "no" }, ... }
+
+    // Fonctions d'auth
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('logout').style.display = 'inline-block';
+        document.getElementById('vote-section').style.display = 'block';
+        document.getElementById('user-info').innerHTML = `
+          Connecté en tant que <b>${user.displayName}</b><br>
+          <small>${user.email}</small><br>
+          <img src="${user.photoURL}" width="50" />
+        `;
+        showImage(currentIndex);
+      } else {
+        document.getElementById('login').style.display = 'inline-block';
+        document.getElementById('logout').style.display = 'none';
+        document.getElementById('vote-section').style.display = 'none';
+        document.getElementById('user-info').innerHTML = '';
+      }
+    });
+
+    document.getElementById('login').onclick = () => {
+      signInWithPopup(auth, provider).catch(err => alert("Erreur: " + err.message));
+    };
+
+    document.getElementById('logout').onclick = () => {
+      signOut(auth);
+    };
+
+    // Afficher image courante
+    function showImage(index) {
+      if (index >= images.length) {
+        document.getElementById('photo').src = "";
+        alert("Merci pour vos votes !");
+        return;
+      }
+      document.getElementById('photo').src = images[index];
+    }
+
+    // Voter
+    window.vote = function(answer) {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Veuillez vous connecter pour voter.");
+        return;
+      }
+
+      const uid = user.uid;
+      const imageUrl = images[currentIndex];
+
+      if (!votes[imageUrl]) votes[imageUrl] = {};
+      votes[imageUrl][uid] = answer;
+
+      console.log("Votes actuels :", votes); // DEBUG
+
+      currentIndex++;
+      showImage(currentIndex);
+    };
+  </script>
+</body>
+</html>
