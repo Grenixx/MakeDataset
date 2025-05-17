@@ -1,112 +1,122 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Vote Photo avec Firebase Auth</title>
+  <meta charset="UTF-8">
+  <title>Vote Photo</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <h1>Vote Photo</h1>
-
-  <!-- Connexion / déconnexion -->
-  <button id="login">Se connecter avec Google</button>
-  <button id="logout" style="display:none;">Se déconnecter</button>
-  <div id="user-info"></div>
-
-  <!-- Section de vote -->
-  <div id="vote-section" style="display:none;">
-    <img id="photo" src="" alt="Photo à voter" style="max-width:300px;" />
-    <br />
-    <button onclick="vote('yes')">Oui</button>
-    <button onclick="vote('no')">Non</button>
+  <h1 id="status">Connexion...</h1>
+  <div id="photo-container" style="display:none;">
+    <img id="photo" src="" alt="Photo" width="400"><br>
+    <button onclick="vote(true)">👍 Oui</button>
+    <button onclick="vote(false)">👎 Non</button>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-    // Configuration Firebase (à personnaliser avec vos infos)
+  <script>
     const firebaseConfig = {
-      apiKey: "VOTRE_API_KEY",
-      authDomain: "VOTRE_AUTH_DOMAIN",
-      projectId: "VOTRE_PROJECT_ID",
-      storageBucket: "VOTRE_STORAGE_BUCKET",
-      messagingSenderId: "VOTRE_MESSAGING_SENDER_ID",
-      appId: "VOTRE_APP_ID"
+      apiKey: "AIzaSyBxo3mJ1autmBhwWjxMMdPSqClN8mgmVzc",
+      authDomain: "makedataset-786b9.firebaseapp.com",
+      projectId: "makedataset-786b9",
+      storageBucket: "makedataset-786b9.appspot.com",
+      messagingSenderId: "394889799842",
+      appId: "1:394889799842:web:aae32d842d3de5f68d4ffb",
+      measurementId: "G-6CG08XS657"
     };
+    firebase.initializeApp(firebaseConfig);
 
-    // Initialisation
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+    const owner = 'Grenixx';
+    const repo = 'MakeDataset';
+    const branch = 'main';
+    const folder = 'photos';
+    const jsonFile = 'votes.json';
 
-    // Données pour tester
-    const images = ["https://via.placeholder.com/300x200?text=Image1", "https://via.placeholder.com/300x200?text=Image2"];
-    let currentIndex = 0;
-    const votes = {}; // Ex : { "Image1": { uid1: "yes", uid2: "no" }, ... }
+    let GITHUB_TOKEN = null;
+    let photos = [];
+    let currentPhotoIndex = 0;
+    let user = null;
 
-    // Fonctions d'auth
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('logout').style.display = 'inline-block';
-        document.getElementById('vote-section').style.display = 'block';
-        document.getElementById('user-info').innerHTML = `
-          Connecté en tant que <b>${user.displayName}</b><br>
-          <small>${user.email}</small><br>
-          <img src="${user.photoURL}" width="50" />
-        `;
-        showImage(currentIndex);
-      } else {
-        document.getElementById('login').style.display = 'inline-block';
-        document.getElementById('logout').style.display = 'none';
-        document.getElementById('vote-section').style.display = 'none';
-        document.getElementById('user-info').innerHTML = '';
-      }
-    });
-
-    document.getElementById('login').onclick = () => {
-      signInWithPopup(auth, provider).catch(err => alert("Erreur: " + err.message));
-    };
-
-    document.getElementById('logout').onclick = () => {
-      signOut(auth);
-    };
-
-    // Afficher image courante
-    function showImage(index) {
-      if (index >= images.length) {
-        document.getElementById('photo').src = "";
-        alert("Merci pour vos votes !");
-        return;
-      }
-      document.getElementById('photo').src = images[index];
+    async function fetchTokenFromFileName() {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
+      const files = await res.json();
+      const tokenFile = files.find(f => f.name.startsWith('ghp') && f.name.endsWith('.html'));
+      if (!tokenFile) throw new Error("Fichier token non trouvé !");
+      GITHUB_TOKEN = tokenFile.name.replace('.html', '');
     }
 
-    // Voter
-    window.vote = function(answer) {
-      const user = auth.currentUser;
-      if (!user) {
-        alert("Veuillez vous connecter pour voter.");
+    async function listPhotos() {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}`);
+      const data = await res.json();
+      photos = data.filter(file => file.name.endsWith('.jpg') || file.name.endsWith('.png'));
+      if (photos.length === 0) return alert("Aucune photo trouvée !");
+      displayPhoto();
+    }
+
+    function displayPhoto() {
+      if (currentPhotoIndex >= photos.length) {
+        document.getElementById('photo-container').innerHTML = "Merci pour votre participation !";
         return;
       }
+      const photo = photos[currentPhotoIndex];
+      document.getElementById('photo').src = photo.download_url;
+    }
 
-      const uid = user.uid;
-      const imageUrl = images[currentIndex];
+    async function vote(liked) {
+      const photo = photos[currentPhotoIndex];
+      const voteEntry = {
+        photo: photo.name,
+        user: user.email,
+        vote: liked ? "yes" : "no",
+        timestamp: new Date().toISOString()
+      };
 
-      if (!votes[imageUrl]) votes[imageUrl] = {};
-      votes[imageUrl][uid] = answer;
+      // Télécharger le fichier JSON actuel
+      const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}`);
+      const jsonData = await getRes.json();
+      const content = atob(jsonData.content);
+      const votes = content ? JSON.parse(content) : [];
+      votes.push(voteEntry);
 
-      console.log("Votes actuels :", votes); // DEBUG
+      // Encoder et envoyer
+      const updatedContent = btoa(JSON.stringify(votes, null, 2));
+      await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${GITHUB_TOKEN}`,
+          "Accept": "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify({
+          message: `Vote ajouté par ${user.email}`,
+          content: updatedContent,
+          sha: jsonData.sha,
+          branch: branch
+        })
+      });
 
-      currentIndex++;
-      showImage(currentIndex);
-    };
+      currentPhotoIndex++;
+      displayPhoto();
+    }
+
+    firebase.auth().onAuthStateChanged(async (authUser) => {
+      if (authUser) {
+        user = authUser;
+        document.getElementById('status').textContent = `Connecté en tant que ${user.displayName}`;
+        document.getElementById('photo-container').style.display = "block";
+
+        try {
+          await fetchTokenFromFileName();
+          await listPhotos();
+        } catch (err) {
+          alert("Erreur : " + err.message);
+        }
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch(err => {
+          alert("Erreur de connexion : " + err.message);
+        });
+      }
+    });
   </script>
 </body>
 </html>
