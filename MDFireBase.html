@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion Google - Test Firebase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #121212;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background: #4285F4;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #357ae8;
+    }
+
+    #logout {
+      margin-top: 20px;
+      background: #ccc;
+      color: #222;
+    }
+
+    #user-info {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    img {
+      border-radius: 50%;
+      margin-top: 10px;
+      width: 64px;
+      height: 64px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Connexion Google</h1>
+  <button id="login">Se connecter avec Google</button>
+  <button id="logout" style="display: none;">Se déconnecter</button>
+  <div id="user-info"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth, GoogleAuthProvider,
+      signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // ⛳️ Remplace par ta configuration Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxo3mJ1autmBhwWjxMMdPSqClN8mgmVzc",
+      authDomain: "makedataset-786b9.firebaseapp.com",
+      projectId: "makedataset-786b9",
+      storageBucket: "makedataset-786b9.firebasestorage.app",
+      messagingSenderId: "394889799842",
+      appId: "1:394889799842:web:aae32d842d3de5f68d4ffb",
+      measurementId: "G-6CG08XS657"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const loginBtn = document.getElementById('login');
+    const logoutBtn = document.getElementById('logout');
+    const userInfo = document.getElementById('user-info');
+
+    loginBtn.onclick = () => signInWithPopup(auth, provider)
+      .catch(err => alert("Erreur : " + err.message));
+
+    logoutBtn.onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        userInfo.innerHTML = `
+          Connecté en tant que <strong>${user.displayName}</strong><br>
+          <small>${user.email}</small><br>
+          <img src="${user.photoURL}" alt="Photo de profil">
+        `;
+      } else {
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        userInfo.innerHTML = "";
+      }
+    });
+  </script>
+</body>
+</html>
