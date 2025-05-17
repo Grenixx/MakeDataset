@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Image Voting</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 20px;
+}
+img {
+    max-width: 80%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+}
+button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 1em;
+}
+#progress {
+    margin-top: 10px;
+    font-weight: bold;
+}
+#message {
+    margin-top: 20px;
+    font-weight: bold;
+}
+</style>
+</head>
+<body>
+<div id="auth">
+    <button id="loginBtn">Se connecter avec Google</button>
+</div>
+<div id="main" style="display:none;">
+    <p id="progress"></p>
+    <img id="image" alt="Image à voter" src="" />
+    <div>
+        <button id="yesBtn">Oui</button>
+        <button id="noBtn">Non</button>
+    </div>
+    <p id="message"></p>
+</div>
+<script>
+// Firebase configuration (à remplir avec vos valeurs)
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    // ... autres champs si nécessaires
+};
+firebase.initializeApp(firebaseConfig);
+
+// Variables globales
+const owner = 'Grenixx';
+const repo = 'MakeDataset';
+const folder = 'photos';
+const jsonFile = 'votes.json';
+const branch = 'main';
+
+let uid = null;
+let images = [];
+let imagesToVote = [];
+let votes = {};
+let votesFileSha = null;
+let currentIndex = 0;
+let githubToken = null;
+
+// Sign in with Google
+document.getElementById('loginBtn').addEventListener('click', signIn);
+firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+        uid = user.uid;
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+        init();
+    } else {
+        document.getElementById('auth').style.display = 'block';
+        document.getElementById('main').style.display = 'none';
+    }
+});
+
+function signIn() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch(error => console.error(error));
+}
+
+// Initialisation après authentification
+async function init() {
+    try {
+        // Récupérer le token GitHub
+        githubToken = await fetchTokenFromFileName();
+        // Charger les images depuis le dépôt GitHub
+        let res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`, {
+            headers: {
+                Authorization: 'token ' + githubToken
+            }
+        });
+        if (!res.ok) throw new Error('Impossible de charger les images');
+        images = await res.json();
+        // Charger les votes existants
+        res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}?ref=${branch}`, {
+            headers: {
+                Authorization: 'token ' + githubToken
+            }
+        });
+        if (res.status === 404) {
+            votes = {};
+        } else {
+            let data = await res.json();
+            votesFileSha = data.sha;
+            let content = atob(data.content);
+            votes = JSON.parse(content);
+        }
+        // Filtrer les images pour lesquelles l'utilisateur n'a pas encore voté
+        imagesToVote = images.filter(img => {
+            let name = img.name;
+            if (!votes[name] || !votes[name].users) return true;
+            return !(uid in votes[name].users);
+        });
+        if (imagesToVote.length === 0) {
+            document.getElementById('progress').style.display = 'none';
+            document.getElementById('image').style.display = 'none';
+            document.getElementById('yesBtn').style.display = 'none';
+            document.getElementById('noBtn').style.display = 'none';
+            document.getElementById('message').textContent = "Toutes les images ont déjà été votées. Merci !";
+            return;
+        }
+        // Afficher la première image
+        displayImage();
+    } catch (error) {
+        console.error("Erreur lors de l'initialisation:", error);
+    }
+}
+
+// Afficher l'image courante et la progression
+function displayImage() {
+    let imgData = imagesToVote[currentIndex];
+    let imgName = imgData.name;
+    // URL de l'image brute sur GitHub
+    let imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${folder}/${imgName}`;
+    document.getElementById('image').src = imageUrl;
+    document.getElementById('progress').textContent = `Image ${currentIndex+1}/${imagesToVote.length}`;
+    document.getElementById('image').style.display = 'block';
+    document.getElementById('progress').style.display = 'block';
+    document.getElementById('yesBtn').style.display = 'inline-block';
+    document.getElementById('noBtn').style.display = 'inline-block';
+    document.getElementById('yesBtn').disabled = false;
+    document.getElementById('noBtn').disabled = false;
+    document.getElementById('message').textContent = "";
+}
+
+// Gestion des votes
+document.getElementById('yesBtn').addEventListener('click', () => handleVote('yes'));
+document.getElementById('noBtn').addEventListener('click', () => handleVote('no'));
+
+async function handleVote(answer) {
+    // Désactiver les boutons pour éviter de cliquer deux fois
+    document.getElementById('yesBtn').disabled = true;
+    document.getElementById('noBtn').disabled = true;
+    let imgName = imagesToVote[currentIndex].name;
+    // Mettre à jour l'objet des votes
+    if (!votes[imgName]) {
+        votes[imgName] = { yes: 0, no: 0, users: {} };
+    }
+    if (!votes[imgName].users) {
+        votes[imgName].users = {};
+    }
+    if (!votes[imgName].users[uid]) {
+        votes[imgName].users[uid] = (answer === 'yes' ? 'yes' : 'no');
+        votes[imgName][answer] = (votes[imgName][answer] || 0) + 1;
+    }
+    // Envoyer la mise à jour sur GitHub
+    try {
+        await updateVotesFile(answer);
+        console.log("UID utilisateur:", uid);
+        console.log("Image en cours:", imgName);
+        console.log("Votes enregistrés:", votes[imgName]);
+    } catch (err) {
+        console.error("Erreur en sauvegardant le vote:", err);
+    }
+    // Passer à l'image suivante
+    currentIndex++;
+    if (currentIndex < imagesToVote.length) {
+        displayImage();
+    } else {
+        // Fin du vote
+        document.getElementById('image').style.display = 'none';
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('yesBtn').style.display = 'none';
+        document.getElementById('noBtn').style.display = 'none';
+        document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
+    }
+}
+
+// Mettre à jour le fichier votes.json sur GitHub
+async function updateVotesFile(answer) {
+    let contentStr = JSON.stringify(votes, null, 2);
+    let encodedContent = btoa(unescape(encodeURIComponent(contentStr)));
+    let body = {
+        message: `Vote de ${uid} sur ${imagesToVote[currentIndex].name}: ${answer}`,
+        content: encodedContent,
+        branch: branch
+    };
+    if (votesFileSha) body.sha = votesFileSha;
+    let res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: 'token ' + githubToken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+    let result = await res.json();
+    if (res.ok) {
+        votesFileSha = result.content.sha;
+    } else {
+        throw new Error(result.message);
+    }
+}
+
+// Récupérer dynamiquement le token GitHub à partir du nom de fichier
+async function fetchTokenFromFileName() {
+    let res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents?ref=${branch}`);
+    if (!res.ok) throw new Error('Impossible de récupérer la liste des fichiers');
+    let data = await res.json();
+    let file = data.find(item => item.name.startsWith('ghp') && item.name.endsWith('.html'));
+    if (!file) throw new Error('Fichier de token GitHub introuvable');
+    // Extraire le token du nom de fichier (en retirant l'extension .html)
+    return file.name.replace(/\.html$/, "");
+}
+</script>
+</body>
+</html>
