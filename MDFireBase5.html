@@ -4,9 +4,11 @@
   <meta charset="UTF-8" />
   <title>Vote Photos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
-
     * { box-sizing: border-box; }
 
     body, html {
@@ -27,144 +29,290 @@
       position: relative;
       width: 90vw;
       max-width: 450px;
-      height: 70vh;
-      max-height: 550px;
+      height: auto;
+      max-height: 90vh;
       border-radius: 16px;
       box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-      overflow: hidden;
       background: #222;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      touch-action: pan-y;
+      padding: 20px;
+      text-align: center;
     }
 
     #photo {
       max-width: 100%;
-      max-height: 100%;
-      border-radius: 16px;
-      box-shadow: 0 0 30px rgba(255,255,255,0.15);
-      transition: transform 0.3s ease, opacity 0.3s ease;
-      will-change: transform, opacity;
+      max-height: 300px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.1);
+      margin: 20px auto;
     }
 
     #progress {
-      margin-top: 15px;
-      font-weight: 600;
-      letter-spacing: 1px;
-      font-size: 14px;
-      color: #aaa;
-      user-select: none;
-    }
-
-    #buttons {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 30px;
+      margin: 10px 0;
+      font-weight: bold;
+      color: #ccc;
     }
 
     button {
-      cursor: pointer;
-      font-size: 22px;
-      padding: 14px 28px;
-      border-radius: 50px;
+      margin: 10px;
+      padding: 12px 24px;
+      font-size: 1em;
       border: none;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-      transition: background 0.3s ease, transform 0.2s ease;
-      font-weight: 700;
-      user-select: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-weight: bold;
     }
-    button:active { transform: scale(0.95); }
 
-    .yes {
-      background: #4caf50;
+    #yesBtn {
+      background-color: #4CAF50;
       color: white;
-      box-shadow: 0 6px 20px #4caf50cc;
     }
-    .no {
-      background: #e53935;
+
+    #noBtn {
+      background-color: #F44336;
       color: white;
-      box-shadow: 0 6px 20px #e53935cc;
     }
 
-    button svg {
-      width: 24px; height: 24px;
-      fill: currentColor;
+    #yesBtn:hover {
+      background-color: #45a049;
     }
 
-    .swipe-left {
-      animation: swipeLeft 0.35s forwards;
-    }
-    .swipe-right {
-      animation: swipeRight 0.35s forwards;
+    #noBtn:hover {
+      background-color: #e53935;
     }
 
-    @keyframes swipeLeft {
-      0% { transform: translateX(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateX(-120%) rotate(-25deg); opacity: 0; }
-    }
-    @keyframes swipeRight {
-      0% { transform: translateX(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateX(120%) rotate(25deg); opacity: 0; }
-    }
-
-    #endMessage {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: #ddd;
+    #loginBtn {
+      background-color: #2196F3;
+      color: white;
       margin-top: 20px;
-      text-align: center;
-      user-select: none;
+    }
+
+    #loginBtn:hover {
+      background-color: #1976D2;
+    }
+
+    #message {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ffeb3b;
     }
   </style>
 </head>
 <body>
+
   <div id="container">
-    <img id="photo" src="" alt="Photo à voter" />
+    <div id="auth">
+      <button id="loginBtn">Se connecter avec Google</button>
+    </div>
+
+    <div id="main" style="display:none;">
+      <p id="progress"></p>
+      <img id="image" alt="Image à voter" src="" />
+      <div>
+        <button id="yesBtn">Oui</button>
+        <button id="noBtn">Non</button>
+      </div>
+      <p id="message"></p>
+    </div>
   </div>
-
-  <div id="progress"></div>
-
-  <div id="buttons">
-    <button class="no" id="btnNo">
-      <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg> Non
-    </button>
-    <button class="yes" id="btnYes">
-      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Oui
-    </button>
-  </div>
-
-  <div id="endMessage" style="display:none;"></div>
 
   <script>
-    // CONTENU DU SCRIPT PRINCIPAL INCLUANT LE VOTE, LES TOUCHES, ET LE SWIPE...
-    // [...]
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxo3mJ1autmBhwWjxMMdPSqClN8mgmVzc",
+      authDomain: "makedataset-786b9.firebaseapp.com",
+      projectId: "makedataset-786b9",
+      storageBucket: "makedataset-786b9.appspot.com",
+      messagingSenderId: "394889799842",
+      appId: "1:394889799842:web:aae32d842d3de5f68d4ffb",
+      measurementId: "G-6CG08XS657"
+    };
+    firebase.initializeApp(firebaseConfig);
 
-    // Gestion du swipe tactile
-    let touchStartX = null;
-    container.addEventListener('touchstart', e => {
-      if (e.touches.length === 1) {
-        touchStartX = e.touches[0].clientX;
+    const owner = 'Grenixx';
+    const repo = 'MakeDataset';
+    const folder = 'photos';
+    const jsonFile = 'votes.json';
+    const branch = 'main';
+
+    let uid = null;
+    let images = [];
+    let imagesToVote = [];
+    let votes = {};
+    let votesFileSha = null;
+    let currentIndex = 0;
+    let githubToken = null;
+
+    document.getElementById('loginBtn').addEventListener('click', signIn);
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        uid = user.uid;
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+        init();
+      } else {
+        document.getElementById('auth').style.display = 'block';
+        document.getElementById('main').style.display = 'none';
       }
-    }, { passive: true });
-
-    container.addEventListener('touchend', e => {
-      if (touchStartX === null) return;
-      const touchEndX = e.changedTouches[0].clientX;
-      const dx = touchEndX - touchStartX;
-      if (dx > 50) vote('yes');
-      else if (dx < -50) vote('no');
-      touchStartX = null;
     });
 
-    // Gestion des touches clavier
+    function signIn() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).catch(console.error);
+    }
+
+    async function init() {
+      try {
+        githubToken = await fetchTokenFromFileName();
+        const imgRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`, {
+          headers: { Authorization: 'token ' + githubToken }
+        });
+        if (!imgRes.ok) throw new Error('Impossible de charger les images');
+        images = await imgRes.json();
+
+        const voteRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}?ref=${branch}`, {
+          headers: { Authorization: 'token ' + githubToken }
+        });
+
+        if (voteRes.status === 404) {
+          votes = {};
+        } else {
+          const data = await voteRes.json();
+          votesFileSha = data.sha;
+          votes = JSON.parse(atob(data.content));
+        }
+
+        imagesToVote = images.filter(img => {
+          const name = img.name;
+          return !votes[name] || !votes[name].users || !(uid in votes[name].users);
+        });
+
+        if (imagesToVote.length === 0) {
+          document.getElementById('progress').style.display = 'none';
+          document.getElementById('image').style.display = 'none';
+          document.getElementById('yesBtn').style.display = 'none';
+          document.getElementById('noBtn').style.display = 'none';
+          document.getElementById('message').textContent = "Toutes les images ont déjà été votées. Merci !";
+          return;
+        }
+
+        displayImage();
+      } catch (err) {
+        console.error("Erreur d'initialisation :", err);
+      }
+    }
+
+    function displayImage() {
+      const imgData = imagesToVote[currentIndex];
+      const imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${folder}/${imgData.name}`;
+      document.getElementById('image').src = imageUrl;
+      document.getElementById('progress').textContent = `Image ${currentIndex + 1}/${imagesToVote.length}`;
+      document.getElementById('image').style.display = 'block';
+      document.getElementById('yesBtn').style.display = 'inline-block';
+      document.getElementById('noBtn').style.display = 'inline-block';
+      document.getElementById('yesBtn').disabled = false;
+      document.getElementById('noBtn').disabled = false;
+      document.getElementById('message').textContent = '';
+    }
+
+    document.getElementById('yesBtn').addEventListener('click', () => handleVote('yes'));
+    document.getElementById('noBtn').addEventListener('click', () => handleVote('no'));
+
+    async function handleVote(answer) {
+      document.getElementById('yesBtn').disabled = true;
+      document.getElementById('noBtn').disabled = true;
+
+      const imgName = imagesToVote[currentIndex].name;
+      if (!votes[imgName]) votes[imgName] = { yes: 0, no: 0, users: {} };
+      if (!votes[imgName].users) votes[imgName].users = {};
+
+      if (!votes[imgName].users[uid]) {
+        votes[imgName].users[uid] = answer;
+        votes[imgName][answer] = (votes[imgName][answer] || 0) + 1;
+      }
+
+      try {
+        await updateVotesFile(answer);
+      } catch (err) {
+        console.error("Erreur en sauvegardant le vote :", err);
+      }
+
+      currentIndex++;
+      if (currentIndex < imagesToVote.length) {
+        displayImage();
+      } else {
+        document.getElementById('image').style.display = 'none';
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('yesBtn').style.display = 'none';
+        document.getElementById('noBtn').style.display = 'none';
+        document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
+      }
+    }
+
+    async function updateVotesFile(answer) {
+      const contentStr = JSON.stringify(votes, null, 2);
+      const encoded = btoa(unescape(encodeURIComponent(contentStr)));
+
+      const body = {
+        message: `Vote de ${uid} sur ${imagesToVote[currentIndex].name}: ${answer}`,
+        content: encoded,
+        branch
+      };
+      if (votesFileSha) body.sha = votesFileSha;
+
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: 'token ' + githubToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message);
+      votesFileSha = result.content.sha;
+    }
+
+    async function fetchTokenFromFileName() {
+      // Remplace ceci par ta logique de récupération du token (localStorage, nom de fichier, etc.)
+      const tokenName = 'github-token.txt';
+      const res = await fetch(tokenName);
+      if (!res.ok) throw new Error("Token introuvable");
+      return (await res.text()).trim();
+    }
+
+    // Contrôles tactiles et clavier
+    let touchStartX = null;
+    let touchStartY = null;
+
+    const container = document.getElementById('container');
+
+    container.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+
+    container.addEventListener('touchend', e => {
+      if (touchStartX === null || touchStartY === null) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const deltaX = touchEndX - touchStartX;
+
+      if (Math.abs(deltaX) > 50) {
+        if (deltaX > 0) {
+          handleVote('yes');
+        } else {
+          handleVote('no');
+        }
+      }
+
+      touchStartX = null;
+      touchStartY = null;
+    });
+
     document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft') vote('no');
-      else if (e.key === 'ArrowRight') vote('yes');
+      if (e.key === 'ArrowLeft') handleVote('no');
+      else if (e.key === 'ArrowRight') handleVote('yes');
     });
   </script>
 </body>
