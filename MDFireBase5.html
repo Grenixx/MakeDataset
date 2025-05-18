@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vote Photos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+    * { box-sizing: border-box; }
+
+    body, html {
+      margin: 0; padding: 0;
+      height: 100%;
+      font-family: 'Montserrat', sans-serif;
+      background: linear-gradient(135deg, #141e30, #243b55);
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #container {
+      position: relative;
+      width: 90vw;
+      max-width: 450px;
+      height: 70vh;
+      max-height: 550px;
+      border-radius: 16px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+      overflow: hidden;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: pan-y;
+    }
+
+    #photo {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(255,255,255,0.15);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      will-change: transform, opacity;
+    }
+
+    #progress {
+      margin-top: 15px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      font-size: 14px;
+      color: #aaa;
+      user-select: none;
+    }
+
+    #buttons {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+    }
+
+    button {
+      cursor: pointer;
+      font-size: 22px;
+      padding: 14px 28px;
+      border-radius: 50px;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+      transition: background 0.3s ease, transform 0.2s ease;
+      font-weight: 700;
+      user-select: none;
+    }
+    button:active { transform: scale(0.95); }
+
+    .yes {
+      background: #4caf50;
+      color: white;
+      box-shadow: 0 6px 20px #4caf50cc;
+    }
+    .no {
+      background: #e53935;
+      color: white;
+      box-shadow: 0 6px 20px #e53935cc;
+    }
+
+    button svg {
+      width: 24px; height: 24px;
+      fill: currentColor;
+    }
+
+    .swipe-left {
+      animation: swipeLeft 0.35s forwards;
+    }
+    .swipe-right {
+      animation: swipeRight 0.35s forwards;
+    }
+
+    @keyframes swipeLeft {
+      0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateX(-120%) rotate(-25deg); opacity: 0; }
+    }
+    @keyframes swipeRight {
+      0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateX(120%) rotate(25deg); opacity: 0; }
+    }
+
+    #endMessage {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #ddd;
+      margin-top: 20px;
+      text-align: center;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <img id="photo" src="" alt="Photo à voter" />
+  </div>
+
+  <div id="progress"></div>
+
+  <div id="buttons">
+    <button class="no" id="btnNo">
+      <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg> Non
+    </button>
+    <button class="yes" id="btnYes">
+      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Oui
+    </button>
+  </div>
+
+  <div id="endMessage" style="display:none;"></div>
+
+  <script>
+    // CONTENU DU SCRIPT PRINCIPAL INCLUANT LE VOTE, LES TOUCHES, ET LE SWIPE...
+    // [...]
+
+    // Gestion du swipe tactile
+    let touchStartX = null;
+    container.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+      }
+    }, { passive: true });
+
+    container.addEventListener('touchend', e => {
+      if (touchStartX === null) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const dx = touchEndX - touchStartX;
+      if (dx > 50) vote('yes');
+      else if (dx < -50) vote('no');
+      touchStartX = null;
+    });
+
+    // Gestion des touches clavier
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') vote('no');
+      else if (e.key === 'ArrowRight') vote('yes');
+    });
+  </script>
+</body>
+</html>
