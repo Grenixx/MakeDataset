@@ -275,13 +275,12 @@
     }
 
     async function fetchTokenFromFileName() {
-      // Remplace ceci par ta logique de récupération du token (localStorage, nom de fichier, etc.)
-      const tokenName = 'github-token.txt';
-      const res = await fetch(tokenName);
-      if (!res.ok) throw new Error("Token introuvable");
-      return (await res.text()).trim();
-    }
-
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
+    const files = await res.json();
+    const tokenFile = files.find(f => f.name.startsWith('ghp') && f.name.endsWith('.html'));
+    if (!tokenFile) throw new Error("Fichier token non trouvé !");
+    GITHUB_TOKEN = tokenFile.name.replace('.html', '');
+  }
     // Contrôles tactiles et clavier
     let touchStartX = null;
     let touchStartY = null;
