@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Make Dataset</title>
+  <title>Vote Photos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -248,7 +248,6 @@
 
   // Attendre que l'animation se termine
   image.addEventListener('animationend', async () => {
-    image.classList.remove('swipe-left', 'swipe-right');
 
     // Désactive les boutons pendant le traitement
     document.getElementById('yesBtn').disabled = true;
@@ -280,6 +279,8 @@
       document.getElementById('noBtn').style.display = 'none';
       document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
     }
+    image.classList.remove('swipe-left', 'swipe-right');
+
   }, { once: true });
 }
 
