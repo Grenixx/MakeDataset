@@ -223,18 +223,26 @@
     }
 
     function displayImage() {
-      const imgData = imagesToVote[currentIndex];
-      const imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${folder}/${imgData.name}`;
-      document.getElementById('image').src = imageUrl;
-      document.getElementById('progress').textContent = `Image ${currentIndex + 1}/${imagesToVote.length}`;
-      document.getElementById('image').style.display = 'block';
-      document.getElementById('yesBtn').style.display = 'inline-block';
-      document.getElementById('noBtn').style.display = 'inline-block';
-      document.getElementById('yesBtn').disabled = false;
-      document.getElementById('noBtn').disabled = false;
-      document.getElementById('message').textContent = '';
-      image.classList.remove('swipe-left', 'swipe-right');
-    }
+  const imgData = imagesToVote[currentIndex];
+  const imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${folder}/${imgData.name}`;
+  const image = document.getElementById('image');
+
+
+  // Quand l'image est complètement chargée
+  image.onload = () => {
+    image.classList.remove('swipe-left', 'swipe-right'); // <- ici maintenant
+  };
+
+  image.src = imageUrl;
+
+  document.getElementById('progress').textContent = `Image ${currentIndex + 1}/${imagesToVote.length}`;
+  image.style.display = 'block';
+  document.getElementById('yesBtn').style.display = 'inline-block';
+  document.getElementById('noBtn').style.display = 'inline-block';
+  document.getElementById('yesBtn').disabled = false;
+  document.getElementById('noBtn').disabled = false;
+  document.getElementById('message').textContent = '';
+}
 
     document.getElementById('yesBtn').addEventListener('click', () => handleVote('yes'));
     document.getElementById('noBtn').addEventListener('click', () => handleVote('no'));
