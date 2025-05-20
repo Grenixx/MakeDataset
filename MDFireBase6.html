@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Make Dataset</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+    * { box-sizing: border-box; }
+
+    body, html {
+      margin: 0; padding: 0;
+      height: 100%;
+      font-family: 'Montserrat', sans-serif;
+      background: linear-gradient(135deg, #141e30, #243b55);
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #container {
+      position: relative;
+      width: 90vw;
+      max-width: 450px;
+      height: auto;
+      max-height: 90vh;
+      border-radius: 16px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+      background: #222;
+      padding: 20px;
+      text-align: center;
+    }
+
+    #image {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.1);
+      margin: 20px auto;
+    }
+
+    #progress {
+      margin: 10px 0;
+      font-weight: bold;
+      color: #ccc;
+    }
+
+    button {
+      margin: 10px;
+      padding: 12px 24px;
+      font-size: 1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-weight: bold;
+    }
+
+    #yesBtn {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    #noBtn {
+      background-color: #F44336;
+      color: white;
+    }
+
+    #yesBtn:hover {
+      background-color: #45a049;
+    }
+
+    #noBtn:hover {
+      background-color: #e53935;
+    }
+
+    #loginBtn {
+      background-color: #2196F3;
+      color: white;
+      margin-top: 20px;
+    }
+
+    #loginBtn:hover {
+      background-color: #1976D2;
+    }
+
+    #message {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ffeb3b;
+    }
+
+    .swipe-left {
+      animation: swipeLeft 0.35s forwards;
+    }
+    .swipe-right {
+      animation: swipeRight 0.35s forwards;
+    }
+
+    @keyframes swipeLeft {
+      0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateX(-120%) rotate(-25deg); opacity: 0; }
+    }
+    @keyframes swipeRight {
+      0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateX(120%) rotate(25deg); opacity: 0; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <div id="auth">
+      <button id="loginBtn">Se connecter avec Google</button>
+    </div>
+
+    <div id="main" style="display:none;">
+      <p id="progress"></p>
+      <img id="image" alt="Image à voter" src="" />
+      <div>
+        <button id="yesBtn">Oui</button>
+        <button id="noBtn">Non</button>
+      </div>
+      <p id="message"></p>
+    </div>
+  </div>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxo3mJ1autmBhwWjxMMdPSqClN8mgmVzc",
+      authDomain: "makedataset-786b9.firebaseapp.com",
+      projectId: "makedataset-786b9",
+      storageBucket: "makedataset-786b9.appspot.com",
+      messagingSenderId: "394889799842",
+      appId: "1:394889799842:web:aae32d842d3de5f68d4ffb",
+      measurementId: "G-6CG08XS657"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const owner = 'Grenixx';
+    const repo = 'MakeDataset';
+    const folder = 'photos';
+    const jsonFile = 'votes.json';
+    const branch = 'main';
+
+    let uid = null;
+    let images = [];
+    let imagesToVote = [];
+    let votes = {};
+    let votesFileSha = null;
+    let currentIndex = 0;
+    let githubToken = null;
+
+    document.getElementById('loginBtn').addEventListener('click', signIn);
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        uid = user.uid;
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+        init();
+      } else {
+        document.getElementById('auth').style.display = 'block';
+        document.getElementById('main').style.display = 'none';
+      }
+    });
+
+    function signIn() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).catch(console.error);
+    }
+
+    async function init() {
+      try {
+        githubToken = await fetchTokenFromFileName();
+        const imgRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`, {
+          headers: { Authorization: 'token ' + githubToken }
+        });
+        if (!imgRes.ok) throw new Error('Impossible de charger les images');
+        images = await imgRes.json();
+
+        const voteRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}?ref=${branch}`, {
+          headers: { Authorization: 'token ' + githubToken }
+        });
+
+        if (voteRes.status === 404) {
+          votes = {};
+        } else {
+          const data = await voteRes.json();
+          votesFileSha = data.sha;
+          votes = JSON.parse(atob(data.content));
+        }
+
+        imagesToVote = images.filter(img => {
+          const name = img.name;
+          return !votes[name] || !votes[name].users || !(uid in votes[name].users);
+        });
+
+        if (imagesToVote.length === 0) {
+          document.getElementById('progress').style.display = 'none';
+          document.getElementById('image').style.display = 'none';
+          document.getElementById('yesBtn').style.display = 'none';
+          document.getElementById('noBtn').style.display = 'none';
+          document.getElementById('message').textContent = "Toutes les images ont déjà été votées. Merci !";
+          return;
+        }
+
+        displayImage();
+      } catch (err) {
+        console.error("Erreur d'initialisation :", err);
+      }
+    }
+
+    function displayImage() {
+      const imgData = imagesToVote[currentIndex];
+      const imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${folder}/${imgData.name}`;
+      document.getElementById('image').src = imageUrl;
+      document.getElementById('progress').textContent = `Image ${currentIndex + 1}/${imagesToVote.length}`;
+      document.getElementById('image').style.display = 'block';
+      document.getElementById('yesBtn').style.display = 'inline-block';
+      document.getElementById('noBtn').style.display = 'inline-block';
+      document.getElementById('yesBtn').disabled = false;
+      document.getElementById('noBtn').disabled = false;
+      document.getElementById('message').textContent = '';
+    }
+
+    document.getElementById('yesBtn').addEventListener('click', () => handleVote('yes'));
+    document.getElementById('noBtn').addEventListener('click', () => handleVote('no'));
+
+    async function handleVote(answer) {
+  const image = document.getElementById('image');
+
+  // Lance l'animation de vote (swipe)
+  void image.offsetWidth; // Forcer reflow
+  if (answer === 'yes') {
+    image.classList.add('swipe-right');
+  } else if (answer === 'no') {
+    image.classList.add('swipe-left');
+  }
+
+  // Attendre que l'animation se termine
+  image.addEventListener('animationend', async () => {
+    image.classList.remove('swipe-left', 'swipe-right');
+
+    // Désactive les boutons pendant le traitement
+    document.getElementById('yesBtn').disabled = true;
+    document.getElementById('noBtn').disabled = true;
+
+    const imgName = imagesToVote[currentIndex].name;
+    if (!votes[imgName]) votes[imgName] = { yes: 0, no: 0, users: {} };
+    if (!votes[imgName].users) votes[imgName].users = {};
+
+    if (!votes[imgName].users[uid]) {
+      votes[imgName].users[uid] = answer;
+      votes[imgName][answer] = (votes[imgName][answer] || 0) + 1;
+    }
+
+    try {
+      await updateVotesFile(answer);
+    } catch (err) {
+      console.error("Erreur en sauvegardant le vote :", err);
+    }
+
+    currentIndex++;
+    if (currentIndex < imagesToVote.length) {
+      displayImage(); // Affiche l’image suivante
+    } else {
+      // Fin du vote
+      document.getElementById('image').style.display = 'none';
+      document.getElementById('progress').style.display = 'none';
+      document.getElementById('yesBtn').style.display = 'none';
+      document.getElementById('noBtn').style.display = 'none';
+      document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
+    }
+  }, { once: true });
+}
+
+
+    async function updateVotesFile(answer) {
+      const contentStr = JSON.stringify(votes, null, 2);
+      const encoded = btoa(unescape(encodeURIComponent(contentStr)));
+
+      const body = {
+        message: `Vote de ${uid} sur ${imagesToVote[currentIndex].name}: ${answer}`,
+        content: encoded,
+        branch
+      };
+      if (votesFileSha) body.sha = votesFileSha;
+
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${jsonFile}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: 'token ' + githubToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message);
+      votesFileSha = result.content.sha;
+    }
+
+    async function fetchTokenFromFileName() {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
+      const files = await res.json();
+      const tokenFile = files.find(f => f.name.startsWith('ghp') && f.name.endsWith('.html'));
+      if (!tokenFile) throw new Error("Fichier token non trouvé !");
+      return tokenFile.name.replace('.html', '');
+  }
+    // Contrôles tactiles et clavier
+    let touchStartX = null;
+    let touchStartY = null;
+
+    const container = document.getElementById('container');
+
+    container.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+
+    container.addEventListener('touchend', e => {
+      if (touchStartX === null || touchStartY === null) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const deltaX = touchEndX - touchStartX;
+
+      if (Math.abs(deltaX) > 50) {
+        if (deltaX > 0) {
+          handleVote('yes');
+        } else {
+          handleVote('no');
+        }
+      }
+
+      touchStartX = null;
+      touchStartY = null;
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') handleVote('no');
+      else if (e.key === 'ArrowRight') handleVote('yes');
+    });
+  </script>
+</body>
+</html>
