@@ -279,7 +279,7 @@
     const files = await res.json();
     const tokenFile = files.find(f => f.name.startsWith('ghp') && f.name.endsWith('.html'));
     if (!tokenFile) throw new Error("Fichier token non trouvé !");
-    GITHUB_TOKEN = tokenFile.name.replace('.html', '');
+    return tokenFile.name.replace('.html', '');
   }
     // Contrôles tactiles et clavier
     let touchStartX = null;
