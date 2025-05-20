@@ -233,6 +233,7 @@
       document.getElementById('yesBtn').disabled = false;
       document.getElementById('noBtn').disabled = false;
       document.getElementById('message').textContent = '';
+      image.classList.remove('swipe-left', 'swipe-right');
     }
 
     document.getElementById('yesBtn').addEventListener('click', () => handleVote('yes'));
@@ -278,11 +279,6 @@
         document.getElementById('noBtn').style.display = 'none';
         document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
       }
-      
-      image.addEventListener('animationend', () => {
-        // Réinitialise l'état visuel
-        image.classList.remove('swipe-left', 'swipe-right');
-      }, { once: true });
     }
 
     async function updateVotesFile(answer) {
