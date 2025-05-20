@@ -38,7 +38,7 @@
       text-align: center;
     }
 
-    #image {
+    #photo {
       max-width: 100%;
       max-height: 300px;
       border-radius: 12px;
@@ -151,6 +151,8 @@
     const folder = 'photos';
     const jsonFile = 'votes.json';
     const branch = 'main';
+    const image = document.getElementById('image');
+
 
     let uid = null;
     let images = [];
@@ -159,6 +161,7 @@
     let votesFileSha = null;
     let currentIndex = 0;
     let githubToken = null;
+
 
     document.getElementById('loginBtn').addEventListener('click', signIn);
     firebase.auth().onAuthStateChanged(user => {
@@ -236,54 +239,51 @@
     document.getElementById('noBtn').addEventListener('click', () => handleVote('no'));
 
     async function handleVote(answer) {
-  const image = document.getElementById('image');
+      //css et ptit anim :
+      
+      void image.offsetWidth;
+      if (answer === 'yes') {
+        image.classList.add('swipe-right');
+      } else if (answer === 'no') {
+        image.classList.add('swipe-left');
+      }
+      
 
-  // Lance l'animation de vote (swipe)
-  void image.offsetWidth; // Forcer reflow
-  if (answer === 'yes') {
-    image.classList.add('swipe-right');
-  } else if (answer === 'no') {
-    image.classList.add('swipe-left');
-  }
 
-  // Attendre que l'animation se termine
-  image.addEventListener('animationend', async () => {
+      document.getElementById('yesBtn').disabled = true;
+      document.getElementById('noBtn').disabled = true;
 
-    // Désactive les boutons pendant le traitement
-    document.getElementById('yesBtn').disabled = true;
-    document.getElementById('noBtn').disabled = true;
+      const imgName = imagesToVote[currentIndex].name;
+      if (!votes[imgName]) votes[imgName] = { yes: 0, no: 0, users: {} };
+      if (!votes[imgName].users) votes[imgName].users = {};
 
-    const imgName = imagesToVote[currentIndex].name;
-    if (!votes[imgName]) votes[imgName] = { yes: 0, no: 0, users: {} };
-    if (!votes[imgName].users) votes[imgName].users = {};
+      if (!votes[imgName].users[uid]) {
+        votes[imgName].users[uid] = answer;
+        votes[imgName][answer] = (votes[imgName][answer] || 0) + 1;
+      }
 
-    if (!votes[imgName].users[uid]) {
-      votes[imgName].users[uid] = answer;
-      votes[imgName][answer] = (votes[imgName][answer] || 0) + 1;
+      try {
+        await updateVotesFile(answer);
+      } catch (err) {
+        console.error("Erreur en sauvegardant le vote :", err);
+      }
+
+      currentIndex++;
+      if (currentIndex < imagesToVote.length) {
+        displayImage();
+      } else {
+        document.getElementById('image').style.display = 'none';
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('yesBtn').style.display = 'none';
+        document.getElementById('noBtn').style.display = 'none';
+        document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
+      }
+      
+      image.addEventListener('animationend', () => {
+        // Réinitialise l'état visuel
+        image.classList.remove('swipe-left', 'swipe-right');
+      }, { once: true });
     }
-
-    try {
-      await updateVotesFile(answer);
-    } catch (err) {
-      console.error("Erreur en sauvegardant le vote :", err);
-    }
-
-    currentIndex++;
-    if (currentIndex < imagesToVote.length) {
-      displayImage(); // Affiche l’image suivante
-    } else {
-      // Fin du vote
-      document.getElementById('image').style.display = 'none';
-      document.getElementById('progress').style.display = 'none';
-      document.getElementById('yesBtn').style.display = 'none';
-      document.getElementById('noBtn').style.display = 'none';
-      document.getElementById('message').textContent = "Toutes les images ont été votées. Merci !";
-    }
-    image.classList.remove('swipe-left', 'swipe-right');
-
-  }, { once: true });
-}
-
 
     async function updateVotesFile(answer) {
       const contentStr = JSON.stringify(votes, null, 2);
