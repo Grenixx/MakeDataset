@@ -22,7 +22,10 @@
   },
   "levresmatesrougealevres.jpg": {
     "yes": 0,
-    "no": 1
+    "no": 2,
+    "users": {
+      "xTAnBRH11lSHT1G3HH220tLI1kx2": "no"
+    }
   },
   "videoframe_5205.png": {
     "yes": 0,
