@@ -323,11 +323,12 @@
     }
   },
   "dogs_176.jpg": {
-    "yes": 1,
+    "yes": 2,
     "no": 1,
     "users": {
       "xTAnBRH11lSHT1G3HH220tLI1kx2": "yes",
-      "y0hJSwNNsXeZQa9NbyCQfpmH9073": "no"
+      "y0hJSwNNsXeZQa9NbyCQfpmH9073": "no",
+      "TY2QI9E1PwR5plhaTyCZuLePlIG2": "yes"
     }
   },
   "dogs_177.jpg": {
