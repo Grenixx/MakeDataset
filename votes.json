@@ -693,9 +693,10 @@
   },
   "dogs_82.jpg": {
     "yes": 1,
-    "no": 0,
+    "no": 1,
     "users": {
-      "TY2QI9E1PwR5plhaTyCZuLePlIG2": "yes"
+      "TY2QI9E1PwR5plhaTyCZuLePlIG2": "yes",
+      "xTAnBRH11lSHT1G3HH220tLI1kx2": "no"
     }
   },
   "dogs_95.jpg": {
