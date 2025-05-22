@@ -700,10 +700,11 @@
     }
   },
   "dogs_95.jpg": {
-    "yes": 0,
+    "yes": 1,
     "no": 1,
     "users": {
-      "TY2QI9E1PwR5plhaTyCZuLePlIG2": "no"
+      "TY2QI9E1PwR5plhaTyCZuLePlIG2": "no",
+      "xTAnBRH11lSHT1G3HH220tLI1kx2": "yes"
     }
   }
 }
